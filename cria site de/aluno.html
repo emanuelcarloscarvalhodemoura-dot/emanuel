@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#08090d">
+  <title>Minha área — X-EDU+</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/learning.css">
+  <link rel="stylesheet" href="css/app-shell.css">
+</head>
+<body class="dashboard-page student-dashboard" data-protected="aluno">
+  <header class="site-header dashboard-header">
+    <a class="brand" href="index.html"><span class="brand-mark">X</span><span>X-EDU<span class="brand-accent">+</span></span></a>
+    <nav class="dashboard-nav" aria-label="Ações do aluno">
+      <a class="button button-quiet forum-nav-link" href="forum.html"><span aria-hidden="true">💬</span><span>Fórum de dúvidas</span></a>
+      <span class="nav-greeting">Área do aluno</span>
+      <button class="button button-quiet" data-signout type="button">Sair <span aria-hidden="true">↗</span></button>
+    </nav>
+  </header>
+
+  <main class="dashboard wrap">
+    <div class="dashboard-welcome" id="page-top">
+      <div>
+        <span class="eyebrow">SEU ESPAÇO DE APRENDIZADO</span>
+        <h1>Olá, <span data-user-name>estudante</span> <span aria-hidden="true">👋</span></h1>
+        <p>Continue seus estudos de onde parou.</p>
+      </div>
+      <div class="user-avatar" id="profile" data-user-initial aria-label="Foto de perfil do aluno">E</div>
+    </div>
+    <div id="form-message" class="form-message" role="alert" aria-live="polite" hidden></div>
+
+    <section class="learning-stats student-stats" aria-label="Resumo dos estudos">
+      <article class="stat-card"><span class="stat-icon stat-blue" aria-hidden="true">📚</span><span class="stat-label">Meus cursos</span><strong id="student-course-count">—</strong><small>cursos inscritos</small></article>
+      <article class="stat-card"><span class="stat-icon stat-violet" aria-hidden="true">📝</span><span class="stat-label">Atividades pendentes</span><strong id="student-pending-count">—</strong><small>quizzes ainda não enviados</small></article>
+      <article class="stat-card"><span class="stat-icon stat-green" aria-hidden="true">✅</span><span class="stat-label">Atividades concluídas</span><strong id="student-attempt-count">—</strong><small>quizzes concluídos</small></article>
+      <article class="stat-card"><span class="stat-icon stat-orange" aria-hidden="true">📊</span><span class="stat-label">Média geral</span><strong id="student-average">—</strong><small>aproveitamento nas tentativas</small></article>
+      <article class="stat-card"><span class="stat-icon stat-blue" aria-hidden="true">🏆</span><span class="stat-label">Pontos</span><strong id="student-points">0</strong><small>melhores resultados nos testes</small></article>
+    </section>
+
+    <section class="learning-panel leaderboard-panel" id="student-ranking">
+      <div class="learning-panel-heading"><div><span class="eyebrow">PONTOS POR ACERTOS</span><h2>🏆 Ranking de pontos</h2></div></div>
+      <p class="leaderboard-note">Cada questão correta vale 1 ponto. Em cada teste, conta apenas sua melhor pontuação.</p>
+      <div id="student-ranking-position" class="leaderboard-own-position" aria-live="polite">Carregando ranking...</div>
+      <div id="student-ranking-list" class="leaderboard-list" aria-live="polite"><div class="learning-empty">Carregando ranking...</div></div>
+    </section>
+
+    <section class="student-study-grid" aria-label="Retomar estudos e desempenho">
+      <article class="learning-panel student-continue-panel" id="student-continue">
+        <div class="learning-panel-heading"><div><span class="eyebrow">RETOME DE ONDE PAROU</span><h2>Continuar estudando</h2></div></div>
+        <div id="student-continue-content" class="student-continue-content"><div class="learning-empty">Carregando seus cursos...</div></div>
+      </article>
+      <article class="learning-panel student-performance-panel" id="student-performance">
+        <div class="learning-panel-heading"><div><span class="eyebrow">SEU RESUMO</span><h2>Meu desempenho</h2></div></div>
+        <div id="student-performance-content" class="student-performance-content"><div class="learning-empty">Carregando seu desempenho...</div></div>
+      </article>
+    </section>
+
+    <div class="student-course-search" role="search" aria-label="Pesquisar cursos">
+      <label for="student-course-search">Pesquisar cursos</label>
+      <input id="student-course-search" type="search" placeholder="Pesquisar cursos..." aria-controls="student-courses available-courses" aria-describedby="student-course-search-help" disabled>
+      <small id="student-course-search-help">Busque em Meus cursos e Cursos disponíveis por nome, matéria, professor ou descrição.</small>
+    </div>
+
+    <section class="learning-panel" id="student-courses-panel">
+      <div class="learning-panel-heading"><div><span class="eyebrow">SUA SALA DE AULA</span><h2>Meus cursos</h2></div><button id="refresh-student" class="button button-quiet compact-button" type="button" aria-label="Atualizar cursos e atividades">↻ Atualizar</button></div>
+      <div id="student-courses" class="course-grid"><div class="learning-empty">Carregando seus cursos...</div></div>
+    </section>
+
+    <section class="learning-panel" id="student-pending-activities-panel">
+      <div class="learning-panel-heading"><div><span class="eyebrow">PRÓXIMOS PASSOS</span><h2>Atividades pendentes</h2></div></div>
+      <div id="student-pending-activities" class="student-activity-list"><div class="learning-empty">Carregando suas atividades...</div></div>
+    </section>
+
+    <section class="learning-panel" id="available-courses-panel">
+      <div class="learning-panel-heading"><div><span class="eyebrow">EXPLORE</span><h2>Cursos disponíveis</h2></div></div>
+      <div id="available-courses" class="course-grid"><div class="learning-empty">Carregando cursos...</div></div>
+    </section>
+
+    <section class="learning-panel" id="student-recent-activities">
+      <div class="learning-panel-heading"><div><span class="eyebrow">SEU HISTÓRICO</span><h2>Atividades recentes</h2></div></div>
+      <div id="student-results" class="results-list"><div class="learning-empty">Carregando atividades recentes...</div></div>
+    </section>
+
+    <section class="learning-panel" id="student-corrections">
+      <div class="learning-panel-heading"><div><span class="eyebrow">REVISE SUAS RESPOSTAS</span><h2>Correções recentes</h2></div></div>
+      <div id="student-corrections-content" class="student-corrections-list"><div class="learning-empty">Carregando correções...</div></div>
+    </section>
+  </main>
+
+  <footer class="site-footer wrap app-version-footer">
+    <span data-user-email></span>
+    <span class="app-version-label">X-EDU+ v3.0</span>
+  </footer>
+
+  <dialog id="student-dialog" class="learning-dialog student-dialog" aria-labelledby="student-dialog-title">
+    <div class="dialog-heading">
+      <div><span class="eyebrow">SALA DE AULA</span><h2 id="student-dialog-title">Curso</h2></div>
+      <button class="icon-close" type="button" data-close-dialog="student-dialog" aria-label="Fechar curso">×</button>
+    </div>
+    <p id="student-dialog-description" class="dialog-course-name"></p>
+    <div id="student-dialog-content"></div>
+    <div class="dialog-actions"><button class="button button-quiet" type="button" data-close-dialog="student-dialog">Voltar aos cursos</button></div>
+  </dialog>
+
+  <script type="module" src="js/auth.js"></script>
+  <script type="module" src="js/learning.js"></script>
+  <script type="module" src="js/sidebar.js"></script>
+  <script type="module" src="js/profile-photo.js"></script>
+</body>
+</html>
+

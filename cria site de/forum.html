@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#f4f7fb">
+  <meta name="description" content="Tire dúvidas e compartilhe conhecimento com a comunidade X-EDU+.">
+  <title>Fórum de Dúvidas — X-EDU+</title><link rel="icon" type="image/svg+xml" href="favicon.svg"><link rel="stylesheet" href="css/style.css"><link rel="stylesheet" href="css/learning.css"><link rel="stylesheet" href="css/forum.css">
+  <link rel="stylesheet" href="css/app-shell.css">
+</head>
+<body class="dashboard-page" data-protected="forum">
+  <header class="site-header dashboard-header"><a class="brand" href="index.html"><span class="brand-mark">X</span><span>X-EDU<span class="brand-accent">+</span></span></a><nav class="dashboard-nav"><span class="nav-greeting">Comunidade de aprendizagem</span><button class="button button-quiet" data-signout type="button">Sair <span aria-hidden="true">↗</span></button></nav></header>
+  <main class="dashboard wrap forum-page"><div class="dashboard-welcome"><div><span class="eyebrow">APRENDER EM COMUNIDADE</span><h1>Fórum de Dúvidas</h1><p>Compartilhe suas perguntas e ajude outras pessoas a aprender.</p></div><div class="forum-title-icon" aria-hidden="true">💬</div></div>
+    <div id="forum-message" class="form-message" role="alert" hidden></div>
+    <section class="learning-panel forum-panel" aria-labelledby="forum-list-title"><div class="learning-panel-heading"><div><span class="eyebrow">TROQUE CONHECIMENTO</span><h2 id="forum-list-title">Dúvidas da comunidade</h2></div><button id="new-question" class="button button-primary" type="button"><span>Nova dúvida</span><span aria-hidden="true">＋</span></button></div>
+      <div class="forum-toolbar"><label class="forum-search-label" for="forum-search">Buscar dúvidas</label><input id="forum-search" class="forum-search" type="search" placeholder="Busque por título, pergunta ou matéria"><span id="forum-count" class="forum-count"></span></div><div class="forum-status-filters" role="group" aria-label="Filtrar dúvidas"><button class="forum-filter is-selected" type="button" data-forum-filter="all" aria-pressed="true">Recentes</button><button class="forum-filter" type="button" data-forum-filter="answered" aria-pressed="false">Respondidas</button><button class="forum-filter" type="button" data-forum-filter="unanswered" aria-pressed="false">Sem resposta</button></div>
+      <div id="forum-questions" class="forum-question-list" aria-live="polite"><div class="learning-empty">Carregando dúvidas...</div></div>
+    </section>
+  </main>
+  <dialog id="question-dialog" class="learning-dialog forum-dialog"><form id="question-form"><div class="dialog-heading"><div><span class="eyebrow">COMPARTILHE SUA PERGUNTA</span><h2>Nova dúvida</h2></div><button class="icon-close" type="button" data-close-forum-dialog="question-dialog" aria-label="Fechar">×</button></div><label class="dialog-label">Título da dúvida<input name="title" maxlength="120" required placeholder="Ex.: Não entendi a eletronegatividade"></label><label class="dialog-label">Descreva sua pergunta<textarea name="description" rows="5" maxlength="3000" required placeholder="Conte o que você gostaria de entender..."></textarea></label><label class="dialog-label">Curso ou matéria <span class="forum-optional">(opcional)</span><select name="courseId" id="forum-course"><option value="">Sem curso específico</option></select></label><div class="dialog-actions"><button class="button button-quiet" type="button" data-close-forum-dialog="question-dialog">Cancelar</button><button class="button button-primary" type="submit"><span>Publicar dúvida</span><span aria-hidden="true">→</span></button></div></form></dialog>
+  <dialog id="thread-dialog" class="learning-dialog forum-dialog thread-dialog"><div class="dialog-heading"><div><span class="eyebrow">FÓRUM DE DÚVIDAS</span><h2 id="thread-title">Dúvida</h2></div><button class="icon-close" type="button" data-close-forum-dialog="thread-dialog" aria-label="Fechar">×</button></div><div id="thread-content"></div></dialog>
+  <footer class="site-footer wrap"><a class="brand" href="index.html"><span class="brand-mark">X</span><span>X-EDU<span class="brand-accent">+</span></span></a><p>Aprender abre caminhos.</p><span data-user-email></span><span class="app-version-label">X-EDU+ v3.0</span></footer>
+  <script type="module" src="js/auth.js"></script><script type="module" src="js/forum.js"></script>
+  <script type="module" src="js/sidebar.js"></script>
+  <script type="module" src="js/profile-photo.js"></script>
+</body></html>
+
+
+
+

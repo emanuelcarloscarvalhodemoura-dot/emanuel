@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f7fb">
+  <meta name="description" content="Redefina sua senha do X-EDU+.">
+  <title>Recuperar senha — X-EDU+</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg"><link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/app-shell.css">
+</head>
+<body class="auth-page">
+  <header class="site-header auth-header">
+    <a class="brand" href="index.html"><span class="brand-mark">X</span><span>X-EDU<span class="brand-accent">+</span></span></a>
+    <a class="header-back" href="login.html">← <span>Voltar ao login</span></a>
+  </header>
+  <main class="auth-layout">
+    <section class="auth-card">
+      <a class="auth-mobile-brand brand" href="index.html"><span class="brand-mark">X</span><span>X-EDU<span class="brand-accent">+</span></span></a>
+      <span class="eyebrow">RECUPERE O ACESSO</span>
+      <h1>Esqueceu sua senha?</h1>
+      <p class="auth-intro">Informe o e-mail da sua conta. Se ele estiver cadastrado, enviaremos um link para criar uma nova senha.</p>
+      <div id="form-message" class="form-message" role="status" aria-live="polite" hidden></div>
+      <form id="reset-form" novalidate>
+        <label for="email">E-mail</label>
+        <input id="email" name="email" type="email" autocomplete="email" placeholder="voce@exemplo.com" required>
+        <button class="button button-primary button-full button-large" type="submit"><span>Enviar link</span><span aria-hidden="true">→</span></button>
+      </form>
+      <p class="auth-switch"><a href="login.html">Voltar para entrar</a></p>
+      <div class="auth-footnote"><span aria-hidden="true">🔒</span> Seus dados estão protegidos</div>
+    </section>
+    <aside class="auth-aside">
+      <div class="aside-decoration aside-decoration-one"></div><div class="aside-decoration aside-decoration-two"></div>
+      <div class="aside-content"><span class="aside-star" aria-hidden="true">✦</span><p class="aside-kicker">SEU APRENDIZADO CONTINUA</p><h2>Você está a um passo de voltar.</h2><p>Recupere seu acesso e continue sua jornada no X-EDU+.</p><div class="aside-signature"><span class="signature-line"></span> Aprender abre caminhos</div></div>
+      <div class="aside-page-number">X-EDU+ <span>·</span> 03</div>
+    </aside>
+  </main>
+  <script type="module" src="js/auth.js"></script>
+<footer class="site-footer wrap app-version-footer"><span class="app-version-label">X-EDU+ v2.0</span></footer>
+</body>
+</html>
+
+
+
