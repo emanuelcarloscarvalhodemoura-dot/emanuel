@@ -1,0 +1,448 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.token.email == 'teste01@gmail.com';
+    }
+
+    function userProfile(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+
+    function activeStudent() {
+      return signedIn()
+        && userProfile(request.auth.uid).tipo == 'aluno'
+        && userProfile(request.auth.uid).status == 'active';
+    }
+
+    function activeTeacher() {
+      return signedIn()
+        && userProfile(request.auth.uid).tipo == 'professor'
+        && userProfile(request.auth.uid).status == 'active';
+    }
+
+    function courseData(courseId) {
+      return get(/databases/$(database)/documents/courses/$(courseId)).data;
+    }
+
+    function ownsCourse(courseId) {
+      return activeTeacher() && courseData(courseId).teacherId == request.auth.uid;
+    }
+
+    function validProfile() {
+      return request.resource.data.keys().hasAll(['nome', 'email', 'tipo', 'status'])
+        && request.resource.data.keys().hasOnly(['nome', 'email', 'tipo', 'status'])
+        && request.resource.data.email == request.auth.token.email
+        && (
+          (request.resource.data.tipo == 'aluno' && request.resource.data.status == 'active')
+          ||
+          (request.resource.data.tipo == 'professor' && request.resource.data.status == 'pending')
+        );
+    }
+
+    match /users/{userId} {
+      allow create: if signedIn() && request.auth.uid == userId && validProfile();
+      allow get: if isAdmin() || (signedIn() && request.auth.uid == userId);
+      allow list: if isAdmin();
+      allow update: if (isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'approvedAt'])
+          && request.resource.data.status in ['active', 'pending', 'inactive'])
+          && (!('approvedAt' in request.resource.data.keys()) || request.resource.data.approvedAt is timestamp)
+        || (signedIn()
+          && request.auth.uid == userId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['profilePhoto', 'profileAvatar'])
+          && (!('profilePhoto' in request.resource.data.keys())
+            || (request.resource.data.profilePhoto is string && request.resource.data.profilePhoto.size() <= 2048))
+          && (!('profileAvatar' in request.resource.data.keys())
+            || request.resource.data.profileAvatar in ['rapaz1', 'rapaz2', 'rapaz3', 'moca1', 'moca2', 'moca3']));
+      allow delete: if false;
+
+      match /notifications/{notificationId} {
+        allow get, list: if signedIn() && request.auth.uid == userId;
+        allow create: if signedIn() && request.auth.uid == userId
+          && request.resource.data.keys().hasAll(['title', 'body', 'kind', 'href', 'sourceId', 'createdAt', 'read'])
+          && request.resource.data.keys().hasOnly(['title', 'body', 'kind', 'href', 'sourceId', 'createdAt', 'read'])
+          && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 120
+          && request.resource.data.body is string && request.resource.data.body.size() <= 500
+          && request.resource.data.kind is string && request.resource.data.kind.size() <= 40
+          && request.resource.data.href is string && request.resource.data.href.size() <= 200
+          && request.resource.data.sourceId is string && request.resource.data.sourceId.size() <= 160
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.read == false;
+        allow update: if signedIn() && request.auth.uid == userId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+          && request.resource.data.read is bool;
+        allow delete: if false;
+      }
+    }
+
+    match /courses/{courseId} {
+      allow get, list: if isAdmin()
+        || (activeTeacher() && resource.data.teacherId == request.auth.uid)
+        || (activeStudent() && resource.data.published == true);
+
+      allow create: if activeTeacher()
+        && request.resource.data.keys().hasAll(['title', 'subject', 'description', 'content', 'teacherId', 'teacherName', 'published', 'createdAt', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['title', 'subject', 'description', 'content', 'teacherId', 'teacherName', 'published', 'createdAt', 'updatedAt'])
+        && request.resource.data.teacherId == request.auth.uid
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 80
+        && request.resource.data.subject is string
+        && request.resource.data.subject.size() <= 50
+        && request.resource.data.description is string
+        && request.resource.data.description.size() <= 500
+        && request.resource.data.content is string
+        && request.resource.data.content.size() > 0
+        && request.resource.data.content.size() <= 10000
+        && request.resource.data.published == false;
+
+      allow update: if isAdmin()
+        || (ownsCourse(courseId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'subject', 'description', 'content', 'published', 'updatedAt'])
+          && request.resource.data.teacherId == resource.data.teacherId
+          && request.resource.data.title is string
+          && request.resource.data.title.size() > 0
+          && request.resource.data.title.size() <= 80
+          && request.resource.data.subject is string
+          && request.resource.data.subject.size() <= 50
+          && request.resource.data.description is string
+          && request.resource.data.description.size() <= 500
+          && request.resource.data.content is string
+          && request.resource.data.content.size() > 0
+          && request.resource.data.content.size() <= 10000
+          && request.resource.data.published is bool);
+      allow delete: if isAdmin() || (ownsCourse(courseId) && resource.data.published == false);
+
+      match /quizzes/{quizId} {
+        function validKeyIndices(indices, questionCount) {
+          return indices is list && indices.size() == questionCount && questionCount > 0 && questionCount <= 10
+            && (indices.size() <= 0 || (indices[0] is int && indices[0] >= 0 && indices[0] < 4))
+            && (indices.size() <= 1 || (indices[1] is int && indices[1] >= 0 && indices[1] < 4))
+            && (indices.size() <= 2 || (indices[2] is int && indices[2] >= 0 && indices[2] < 4))
+            && (indices.size() <= 3 || (indices[3] is int && indices[3] >= 0 && indices[3] < 4))
+            && (indices.size() <= 4 || (indices[4] is int && indices[4] >= 0 && indices[4] < 4))
+            && (indices.size() <= 5 || (indices[5] is int && indices[5] >= 0 && indices[5] < 4))
+            && (indices.size() <= 6 || (indices[6] is int && indices[6] >= 0 && indices[6] < 4))
+            && (indices.size() <= 7 || (indices[7] is int && indices[7] >= 0 && indices[7] < 4))
+            && (indices.size() <= 8 || (indices[8] is int && indices[8] >= 0 && indices[8] < 4))
+            && (indices.size() <= 9 || (indices[9] is int && indices[9] >= 0 && indices[9] < 4));
+        }
+        function validQuestion(question) {
+          return question is map
+            && question.keys().hasAll(['prompt', 'options'])
+            && question.keys().hasOnly(['prompt', 'options'])
+            && question.prompt is string && question.prompt.size() > 0 && question.prompt.size() <= 1000
+            && question.options is list && question.options.size() == 4
+            && question.options[0] is string && question.options[1] is string
+            && question.options[2] is string && question.options[3] is string;
+        }
+        function validQuestions(questions) {
+          return questions is list && questions.size() > 0 && questions.size() <= 10
+            && (questions.size() <= 0 || validQuestion(questions[0]))
+            && (questions.size() <= 1 || validQuestion(questions[1]))
+            && (questions.size() <= 2 || validQuestion(questions[2]))
+            && (questions.size() <= 3 || validQuestion(questions[3]))
+            && (questions.size() <= 4 || validQuestion(questions[4]))
+            && (questions.size() <= 5 || validQuestion(questions[5]))
+            && (questions.size() <= 6 || validQuestion(questions[6]))
+            && (questions.size() <= 7 || validQuestion(questions[7]))
+            && (questions.size() <= 8 || validQuestion(questions[8]))
+            && (questions.size() <= 9 || validQuestion(questions[9]));
+        }
+
+        allow get, list: if isAdmin()
+          || ownsCourse(courseId)
+          || (activeStudent() && courseData(courseId).published == true && resource.data.published == true && resource.data.answerKeyVersion == 2);
+
+        allow create: if ownsCourse(courseId)
+          && request.resource.data.keys().hasAll(['title', 'questions', 'published', 'teacherId', 'createdAt', 'answerKeyStored', 'answerKeyVersion'])
+          && request.resource.data.keys().hasOnly(['title', 'questions', 'published', 'teacherId', 'createdAt', 'answerKeyStored', 'answerKeyVersion'])
+          && request.resource.data.teacherId == request.auth.uid
+          && request.resource.data.title is string
+          && request.resource.data.title.size() > 0
+          && request.resource.data.title.size() <= 80
+          && validQuestions(request.resource.data.questions)
+          && request.resource.data.published == true
+          && request.resource.data.answerKeyStored == true
+          && request.resource.data.answerKeyVersion == 2;
+
+        allow update: if isAdmin()
+          || (ownsCourse(courseId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'questions', 'published', 'answerKeyStored', 'answerKeyVersion'])
+            && request.resource.data.teacherId == resource.data.teacherId
+            && request.resource.data.title is string
+            && request.resource.data.title.size() > 0
+            && request.resource.data.title.size() <= 80
+            && validQuestions(request.resource.data.questions)
+            && request.resource.data.published is bool
+            && request.resource.data.answerKeyStored == true
+            && request.resource.data.answerKeyVersion == 2);
+        allow delete: if isAdmin() || ownsCourse(courseId);
+
+        match /answerKeys/{keyId} {
+          allow get, list: if isAdmin() || ownsCourse(courseId)
+            || (activeStudent() && keyId == 'correct'
+              && exists(/databases/$(database)/documents/courses/$(courseId)/quizzes/$(quizId)/reviewAccess/$(request.auth.uid)));
+          allow create, update: if isAdmin() || (ownsCourse(courseId) && keyId == 'correct'
+            && request.resource.data.keys().hasOnly(['indices'])
+            && validKeyIndices(request.resource.data.indices,
+              getAfter(/databases/$(database)/documents/courses/$(courseId)/quizzes/$(quizId)).data.questions.size()));
+          allow delete: if isAdmin();
+        }
+
+        match /reviewAccess/{studentId} {
+          function relatedAttempt(attemptId) {
+            return getAfter(/databases/$(database)/documents/attempts/$(attemptId)).data.studentId == studentId
+              && getAfter(/databases/$(database)/documents/attempts/$(attemptId)).data.courseId == courseId
+              && getAfter(/databases/$(database)/documents/attempts/$(attemptId)).data.quizId == quizId;
+          }
+          allow get: if isAdmin() || (signedIn() && request.auth.uid == studentId);
+          allow list: if isAdmin();
+          allow create, update: if activeStudent() && request.auth.uid == studentId
+            && request.resource.data.keys().hasOnly(['attemptId'])
+            && request.resource.data.attemptId is string
+            && relatedAttempt(request.resource.data.attemptId);
+          allow delete: if false;
+        }
+      }
+
+      match /events/{eventId} {
+        function enrolledStudent() {
+          return activeStudent()
+            && exists(/databases/$(database)/documents/enrollments/$(request.auth.uid + '_' + courseId));
+        }
+        allow get, list: if isAdmin() || ownsCourse(courseId) || (enrolledStudent() && courseData(courseId).published == true);
+        allow create: if ownsCourse(courseId)
+          && request.resource.data.keys().hasAll(['courseId', 'title', 'description', 'eventAt', 'createdAt', 'createdBy'])
+          && request.resource.data.keys().hasOnly(['courseId', 'title', 'description', 'eventAt', 'createdAt', 'createdBy'])
+          && request.resource.data.courseId == courseId
+          && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 120
+          && request.resource.data.description is string && request.resource.data.description.size() <= 1000
+          && request.resource.data.eventAt is timestamp
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.createdBy == request.auth.uid;
+        allow update: if ownsCourse(courseId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'description', 'eventAt'])
+          && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 120
+          && request.resource.data.description is string && request.resource.data.description.size() <= 1000
+          && request.resource.data.eventAt is timestamp;
+        allow delete: if ownsCourse(courseId);
+      }
+
+    }
+
+    match /enrollments/{enrollmentId} {
+      allow get, list: if isAdmin()
+        || (signedIn() && resource.data.studentId == request.auth.uid)
+        || ownsCourse(resource.data.courseId);
+
+      allow create: if activeStudent()
+        && request.resource.data.keys().hasAll(['studentId', 'courseId', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['studentId', 'courseId', 'createdAt'])
+        && request.resource.data.studentId == request.auth.uid
+        && enrollmentId == request.auth.uid + '_' + request.resource.data.courseId
+        && courseData(request.resource.data.courseId).published == true;
+      allow update, delete: if false;
+    }
+
+    match /attempts/{attemptId} {
+      function scoreAt(answers, key, index) {
+        return answers.size() > index && answers[index] == key[index] ? 1 : 0;
+      }
+      function scoreFromKey(answers, key) {
+        return scoreAt(answers, key, 0) + scoreAt(answers, key, 1)
+          + scoreAt(answers, key, 2) + scoreAt(answers, key, 3)
+          + scoreAt(answers, key, 4) + scoreAt(answers, key, 5)
+          + scoreAt(answers, key, 6) + scoreAt(answers, key, 7)
+          + scoreAt(answers, key, 8) + scoreAt(answers, key, 9);
+      }
+      function validPicks(answers) {
+        return answers is list && answers.size() > 0 && answers.size() <= 10
+          && (answers.size() <= 0 || (answers[0] is int && answers[0] >= 0 && answers[0] < 4))
+          && (answers.size() <= 1 || (answers[1] is int && answers[1] >= 0 && answers[1] < 4))
+          && (answers.size() <= 2 || (answers[2] is int && answers[2] >= 0 && answers[2] < 4))
+          && (answers.size() <= 3 || (answers[3] is int && answers[3] >= 0 && answers[3] < 4))
+          && (answers.size() <= 4 || (answers[4] is int && answers[4] >= 0 && answers[4] < 4))
+          && (answers.size() <= 5 || (answers[5] is int && answers[5] >= 0 && answers[5] < 4))
+          && (answers.size() <= 6 || (answers[6] is int && answers[6] >= 0 && answers[6] < 4))
+          && (answers.size() <= 7 || (answers[7] is int && answers[7] >= 0 && answers[7] < 4))
+          && (answers.size() <= 8 || (answers[8] is int && answers[8] >= 0 && answers[8] < 4))
+          && (answers.size() <= 9 || (answers[9] is int && answers[9] >= 0 && answers[9] < 4));
+      }
+      function verifiedSubmission() {
+        let coursePath = /databases/$(database)/documents/courses/$(request.resource.data.courseId);
+        let quizPath = /databases/$(database)/documents/courses/$(request.resource.data.courseId)/quizzes/$(request.resource.data.quizId);
+        let keyPath = /databases/$(database)/documents/courses/$(request.resource.data.courseId)/quizzes/$(request.resource.data.quizId)/answerKeys/correct;
+        let enrollmentPath = /databases/$(database)/documents/enrollments/$(request.auth.uid + '_' + request.resource.data.courseId);
+        let questions = get(quizPath).data.questions;
+        let key = get(keyPath).data.indices;
+        let bestId = request.auth.uid + '--' + request.resource.data.courseId + '--' + request.resource.data.quizId;
+        let bestPath = /databases/$(database)/documents/rankingBest/$(bestId);
+        let ownerPath = /databases/$(database)/documents/rankingOwners/$(request.auth.uid);
+        let reviewPath = /databases/$(database)/documents/courses/$(request.resource.data.courseId)/quizzes/$(request.resource.data.quizId)/reviewAccess/$(request.auth.uid);
+        return get(coursePath).data.published == true
+          && get(quizPath).data.published == true
+          && get(quizPath).data.answerKeyVersion == 2
+          && request.resource.data.courseTitle == get(coursePath).data.title
+          && request.resource.data.quizTitle == get(quizPath).data.title
+          && get(enrollmentPath).data.studentId == request.auth.uid
+          && validPicks(request.resource.data.answers)
+          && request.resource.data.answers.size() == questions.size()
+          && key.size() == questions.size()
+          && request.resource.data.score is int
+          && request.resource.data.score == scoreFromKey(request.resource.data.answers, key)
+          && request.resource.data.total == questions.size()
+          && request.resource.data.studentName == userProfile(request.auth.uid).nome
+          && request.resource.data.submittedAt == request.time
+          && getAfter(bestPath).data.attemptId == attemptId
+          && getAfter(bestPath).data.previousBest == request.resource.data.previousBest
+          && getAfter(bestPath).data.bestScore == request.resource.data.bestScore
+          && getAfter(bestPath).data.pointsAdded == request.resource.data.pointsAdded
+          && getAfter(ownerPath).data.lastAttemptId == attemptId
+          && getAfter(ownerPath).data.lastBestId == bestId
+          && getAfter(reviewPath).data.attemptId == attemptId;
+      }
+      allow get, list: if isAdmin()
+        || (signedIn() && resource.data.studentId == request.auth.uid)
+        || ownsCourse(resource.data.courseId);
+
+      // O gabarito fica oculto; as regras calculam e validam a nota antes de aceitar a tentativa.
+      allow create: if activeStudent()
+        && request.resource.data.keys().hasAll(['studentId', 'studentName', 'courseId', 'courseTitle', 'quizId', 'quizTitle', 'answers', 'score', 'total', 'previousBest', 'bestScore', 'pointsAdded', 'submittedAt'])
+        && request.resource.data.keys().hasOnly(['studentId', 'studentName', 'courseId', 'courseTitle', 'quizId', 'quizTitle', 'answers', 'score', 'total', 'previousBest', 'bestScore', 'pointsAdded', 'submittedAt'])
+        && request.resource.data.studentId == request.auth.uid
+        && verifiedSubmission();
+      allow update, delete: if false;
+    }
+
+    match /rankingOwners/{studentId} {
+      function validOwnerWrite(previousPoints) {
+        let bestPath = /databases/$(database)/documents/rankingBest/$(request.resource.data.lastBestId);
+        let best = getAfter(bestPath).data;
+        let attempt = getAfter(/databases/$(database)/documents/attempts/$(request.resource.data.lastAttemptId)).data;
+        return request.auth.uid == studentId
+          && request.resource.data.keys().hasOnly(['rankingId', 'points', 'lastBestId', 'lastAttemptId', 'updatedAt'])
+          && request.resource.data.rankingId is string
+          && request.resource.data.rankingId.size() > 0
+          && request.resource.data.points == previousPoints + best.pointsAdded
+          && best.studentId == studentId
+          && best.attemptId == request.resource.data.lastAttemptId
+          && attempt.studentId == studentId
+          && attempt.score is int;
+      }
+      allow get: if isAdmin() || (signedIn() && request.auth.uid == studentId);
+      allow list: if isAdmin();
+      allow create: if activeStudent() && validOwnerWrite(0)
+        && getAfter(/databases/$(database)/documents/rankings/$(request.resource.data.rankingId)).data.points == request.resource.data.points;
+      allow update: if activeStudent() && request.resource.data.rankingId == resource.data.rankingId
+        && validOwnerWrite(resource.data.points)
+        && getAfter(/databases/$(database)/documents/rankings/$(request.resource.data.rankingId)).data.points == request.resource.data.points;
+      allow delete: if false;
+    }
+
+    match /rankingBest/{bestId} {
+      function verifiedBest(previous) {
+        let attempt = getAfter(/databases/$(database)/documents/attempts/$(request.resource.data.attemptId)).data;
+        let updated = attempt.score > previous ? attempt.score : previous;
+        return request.resource.data.keys().hasOnly(['studentId', 'courseId', 'quizId', 'bestScore', 'previousBest', 'pointsAdded', 'attemptId', 'updatedAt'])
+          && request.resource.data.studentId == request.auth.uid
+          && request.resource.data.courseId == attempt.courseId
+          && request.resource.data.quizId == attempt.quizId
+          && bestId == request.auth.uid + '--' + attempt.courseId + '--' + attempt.quizId
+          && request.resource.data.previousBest == previous
+          && request.resource.data.bestScore == updated
+          && request.resource.data.pointsAdded == updated - previous
+          && request.resource.data.attemptId is string
+          && attempt.studentId == request.auth.uid;
+      }
+      allow get: if isAdmin() || (signedIn()
+        && (resource == null
+          || resource.data.studentId == request.auth.uid));
+      allow list: if isAdmin();
+      allow create: if activeStudent() && !exists(/databases/$(database)/documents/rankingBest/$(bestId)) && verifiedBest(0);
+      allow update: if activeStudent() && resource.data.studentId == request.auth.uid && verifiedBest(resource.data.bestScore);
+      allow delete: if false;
+    }
+
+    match /rankings/{entryId} {
+      function linkedToCaller() {
+        let ownerPath = /databases/$(database)/documents/rankingOwners/$(request.auth.uid);
+        return getAfter(ownerPath).data.rankingId == entryId
+          && getAfter(ownerPath).data.points == request.resource.data.points
+          && request.resource.data.studentName == userProfile(request.auth.uid).nome
+          && request.resource.data.keys().hasOnly(['studentName', 'points', 'updatedAt']);
+      }
+      allow get, list: if isAdmin() || activeStudent();
+      allow create: if activeStudent() && linkedToCaller()
+        && getAfter(/databases/$(database)/documents/rankingOwners/$(request.auth.uid)).data.lastAttemptId is string;
+      allow update: if activeStudent() && linkedToCaller()
+        && getAfter(/databases/$(database)/documents/rankingOwners/$(request.auth.uid)).data.rankingId == entryId;
+      allow delete: if false;
+    }
+    match /forumQuestions/{questionId} {
+      function forumMember() {
+        return activeStudent() || activeTeacher();
+      }
+
+      function validCourseReference() {
+        return (request.resource.data.courseId == '' && request.resource.data.courseName == '')
+          || (request.resource.data.courseId is string
+            && request.resource.data.courseName is string
+            && exists(/databases/$(database)/documents/courses/$(request.resource.data.courseId))
+            && courseData(request.resource.data.courseId).title == request.resource.data.courseName
+            && ((activeTeacher() && courseData(request.resource.data.courseId).teacherId == request.auth.uid)
+              || (activeStudent() && courseData(request.resource.data.courseId).published == true)));
+      }
+
+      allow get, list: if isAdmin() || forumMember();
+      allow create: if forumMember()
+        && request.resource.data.keys().hasAll(['title', 'description', 'authorId', 'authorName', 'authorType', 'courseId', 'courseName', 'createdAt', 'acceptedAnswerId'])
+        && request.resource.data.keys().hasOnly(['title', 'description', 'authorId', 'authorName', 'authorType', 'courseId', 'courseName', 'createdAt', 'acceptedAnswerId'])
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.authorName == userProfile(request.auth.uid).nome
+        && request.resource.data.authorType == userProfile(request.auth.uid).tipo
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 120
+        && request.resource.data.description is string
+        && request.resource.data.description.size() > 0
+        && request.resource.data.description.size() <= 3000
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.acceptedAnswerId == ''
+        && validCourseReference();
+      allow update: if isAdmin()
+        || (forumMember()
+          && request.auth.uid == resource.data.authorId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['acceptedAnswerId'])
+          && request.resource.data.acceptedAnswerId is string
+          && request.resource.data.acceptedAnswerId.size() > 0
+          && exists(/databases/$(database)/documents/forumQuestions/$(questionId)/replies/$(request.resource.data.acceptedAnswerId)));
+      allow delete: if isAdmin();
+
+      match /replies/{replyId} {
+        allow get, list: if isAdmin() || forumMember();
+        allow create: if forumMember()
+          && exists(/databases/$(database)/documents/forumQuestions/$(questionId))
+          && request.resource.data.keys().hasAll(['authorId', 'authorName', 'authorType', 'text', 'createdAt'])
+          && request.resource.data.keys().hasOnly(['authorId', 'authorName', 'authorType', 'text', 'createdAt'])
+          && request.resource.data.authorId == request.auth.uid
+          && request.resource.data.authorName == userProfile(request.auth.uid).nome
+          && request.resource.data.authorType == userProfile(request.auth.uid).tipo
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 2000
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if isAdmin();
+      }
+    }
+  }
+}
+
+
+
